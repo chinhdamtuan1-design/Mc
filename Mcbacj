@@ -1,0 +1,570 @@
+local Directory = "https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/Games"
+local Api = "https://api.luarmor.net/files/v4/loaders"
+local Scripts = {
+    Free = {
+        [994732206] = Directory .. "/BloxFruits.lua",
+        [9186719164] = Directory .. "/SailorPiece.lua",
+        [8191429227] = Directory .. "/CutTrees.lua",
+    },
+    Premium = {
+        [994732206] = Api .. "/0ae9fe4cf963e3a13d25eed0e2ce5940.lua",
+        [10004244222] = Api .. "/63980a492928552d074ceee243a918d6.lua",
+        [9792947201] = Api .. "/50e8e00251d97215e14313c0bb012058.lua",
+        [10200395747] = Api.."/65265b2869c03f57430ee45357d8c3f9.lua"
+    }
+}
+
+local SCRIPT_ID = "0ae9fe4cf963e3a13d25eed0e2ce5940"
+local FOLDER = "Cay Vẫn phải Hub"
+local KEY_FILE = FOLDER .. "/Key.json"
+
+local Players = game:GetService("Players")
+local HttpService = game:GetService("HttpService")
+local TweenService = game:GetService("TweenService")
+local LocalPlayer = Players.LocalPlayer
+local Mouse = LocalPlayer:GetMouse()
+local gameId = game.GameId
+
+local function Tween(obj, props, t, style, dir)
+    style = style or Enum.EasingStyle.Quint
+    dir = dir or Enum.EasingDirection.Out
+    TweenService:Create(obj, TweenInfo.new(t, style, dir), props):Play()
+end
+
+local function Protect(gui)
+    local env = (getgenv and getgenv()) or _G
+    if env.HIDEUI then
+        gui.Parent = env.HIDEUI
+    elseif gethui then
+        gui.Parent = gethui()
+    elseif syn and syn.protect_gui then
+        syn.protect_gui(gui)
+        gui.Parent = game:GetService("CoreGui")
+    else
+        gui.Parent = game:GetService("CoreGui")
+    end
+end
+
+local function New(class, props, parent)
+    local inst = Instance.new(class)
+    for k, v in pairs(props) do
+        if k ~= "Children" and k ~= "Parent" then
+            pcall(function() inst[k] = v end)
+        end
+    end
+    if props.Children then
+        for _, c in ipairs(props.Children) do
+            pcall(function() c.Parent = inst end)
+        end
+    end
+    inst.Parent = props.Parent or parent
+    return inst
+end
+
+local function CircleRipple(btn, mx, my)
+    task.spawn(function()
+        btn.ClipsDescendants = true
+        local nx = mx - btn.AbsolutePosition.X
+        local ny = my - btn.AbsolutePosition.Y
+        local sz = math.max(btn.AbsoluteSize.X, btn.AbsoluteSize.Y) * 1.6
+        local c = New("ImageLabel", {
+            Name = "Ripple",
+            Image = "rbxassetid://266543268",
+            ImageColor3 = Color3.fromRGB(255, 255, 255),
+            ImageTransparency = 0.82,
+            BackgroundTransparency = 1,
+            ZIndex = btn.ZIndex + 5,
+            Size = UDim2.new(0, 0, 0, 0),
+            Position = UDim2.new(0, nx, 0, ny),
+        }, btn)
+        Tween(c, { Size = UDim2.new(0, sz, 0, sz), Position = UDim2.new(0.5, -sz/2, 0.5, -sz/2) }, 0.45, Enum.EasingStyle.Quad)
+        Tween(c, { ImageTransparency = 1 }, 0.45, Enum.EasingStyle.Linear)
+        task.wait(0.46)
+        c:Destroy()
+    end)
+end
+
+local function SaveKey(key)
+    if not isfolder(FOLDER) then makefolder(FOLDER) end
+    pcall(writefile, KEY_FILE, HttpService:JSONEncode({ key = key }))
+end
+
+local function LoadSavedKey()
+    if isfolder(FOLDER) and isfile(KEY_FILE) then
+        local ok, v = pcall(function()
+            return HttpService:JSONDecode(readfile(KEY_FILE))
+        end)
+        if ok and type(v) == "table" and v.key then return v.key end
+    end
+    return ""
+end
+
+local function ClearKey()
+    if not isfolder(FOLDER) then makefolder(FOLDER) end
+    pcall(writefile, KEY_FILE, HttpService:JSONEncode({}))
+end
+
+local function LoadScript(tier, key)
+    local tbl = Scripts[tier]
+    if not tbl then return end
+    local url = tbl[gameId]
+    if not url then
+        warn("[Quantum Onyx] No " .. tier .. " script for GameId: " .. tostring(gameId))
+        return
+    end
+    if tier == "Premium" and key then
+        getgenv().script_key = key
+    end
+    local ok, err = pcall(function() loadstring(game:HttpGet(url))() end)
+    if not ok then warn("[Quantum Onyx] Error: " .. tostring(err)) end
+end
+
+local function ShowKeyUI()
+    local done = false
+    local isPremium = false
+    local resultKey = ""
+    local submitting = false
+
+    local supportInfo = {
+        { label = "Discord", value = "discord.gg/onyxfam" },
+        { label = "Game", value = (pcall(function()
+            return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name end) and game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name) or "Unknown" },
+        { label = "Version", value = "v.Freemium" },
+    }
+
+    local UpdateLog = {
+        { version = "v2.1", date = "2026", notes = "Luarmor API key check" },
+    }
+
+    local SG = Instance.new("ScreenGui")
+    SG.Name = "KL_" .. tostring(math.random(1e6))
+    SG.ZIndexBehavior = Enum.ZIndexBehavior.Global
+    SG.ResetOnSpawn = false
+    SG.IgnoreGuiInset = true
+    Protect(SG)
+
+    local Backdrop = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(0, 0, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 1, 0),
+        ZIndex = 200,
+        Parent = SG,
+    })
+
+    local W, H = 450, 310
+    local Card = New("Frame", {
+        AnchorPoint = Vector2.new(0.5, 0.5),
+        Position = UDim2.new(0.5, 0, 0.5, 0),
+        Size = UDim2.new(0, W * 0.5, 0, H * 0.5),
+        BackgroundColor3 = Color3.fromRGB(6, 3, 12),
+        BackgroundTransparency = 0.80,
+        BorderSizePixel = 0,
+        ZIndex = 201,
+        ClipsDescendants = true,
+        Parent = SG,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 14) }),
+            New("UIStroke", {
+                Color = Color3.fromRGB(110, 50, 210),
+                Transparency = 0.38,
+                Thickness = 1,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+            }),
+        }
+    })
+
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(80, 20, 160),
+        BackgroundTransparency = 0.88,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, -60, 0, -60),
+        Size = UDim2.new(0, 220, 0, 220),
+        ZIndex = 201,
+        Parent = Card,
+        Children = { New("UICorner", { CornerRadius = UDim.new(1, 0) }) }
+    })
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(40, 10, 110),
+        BackgroundTransparency = 0.90,
+        BorderSizePixel = 0,
+        Position = UDim2.new(1, -100, 1, -100),
+        Size = UDim2.new(0, 180, 0, 180),
+        ZIndex = 201,
+        Parent = Card,
+        Children = { New("UICorner", { CornerRadius = UDim.new(1, 0) }) }
+    })
+
+    local Header = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+        BorderSizePixel = 0,
+        Size = UDim2.new(1, 0, 0, 44),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 14) }),
+            New("Frame", {
+                BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+                BorderSizePixel = 0,
+                Position = UDim2.new(0, 0, 0.5, 0),
+                Size = UDim2.new(1, 0, 0.5, 0),
+                ZIndex = 202
+            }),
+        }
+    })
+    New("ImageLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 13, 0.5, -8),
+        Size = UDim2.new(0, 16, 0, 16),
+        Image = "rbxassetid://7733992528",
+        ImageColor3 = Color3.fromRGB(155, 90, 255),
+        ZIndex = 203,
+        Parent = Header
+    })
+    New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 35, 0, 0),
+        Size = UDim2.new(1, -130, 1, 0),
+        Font = Enum.Font.FredokaOne,
+        Text = "Quantum Onyx — Key System",
+        TextColor3 = Color3.fromRGB(220, 200, 255),
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 203,
+        Parent = Header
+    })
+    New("Frame", {
+        AnchorPoint = Vector2.new(1, 0.5),
+        BackgroundColor3 = Color3.fromRGB(30, 60, 20),
+        BackgroundTransparency = 0.35,
+        BorderSizePixel = 0,
+        Position = UDim2.new(1, -40, 0.5, 0),
+        Size = UDim2.new(0, 72, 0, 20),
+        ZIndex = 203,
+        Parent = Header,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 5) }),
+            New("UIStroke", { Color = Color3.fromRGB(80, 200, 110), Transparency = 0.45, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Size = UDim2.new(1, 0, 1, 0),
+                Font = Enum.Font.GothamBold,
+                Text = "Freemium",
+                TextColor3 = Color3.fromRGB(130, 235, 160),
+                TextSize = 10,
+                TextXAlignment = Enum.TextXAlignment.Center,
+                ZIndex = 204
+            }),
+        }
+    })
+    local CloseBtn = New("ImageButton", {
+        BackgroundTransparency = 1,
+        AnchorPoint = Vector2.new(1, 0.5),
+        Position = UDim2.new(1, -8, 0.5, 0),
+        Size = UDim2.new(0, 20, 0, 20),
+        Image = "rbxassetid://79324227570635",
+        ImageColor3 = Color3.fromRGB(200, 80, 80),
+        ZIndex = 203,
+        Parent = Header
+    })
+
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(110, 50, 210),
+        BackgroundTransparency = 0.55,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 0, 0, 44),
+        Size = UDim2.new(1, 0, 0, 1),
+        ZIndex = 202,
+        Parent = Card,
+        Children = { New("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.1, 0),
+                NumberSequenceKeypoint.new(0.9, 0),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+        }) }
+    })
+
+    local LW = 180
+    local RX = LW + 18
+    local RW = W - RX - 10
+
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(100, 50, 200),
+        BackgroundTransparency = 0.65,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, LW + 8, 0, 52),
+        Size = UDim2.new(0, 1, 0, H - 60),
+        ZIndex = 202,
+        Parent = Card,
+        Children = { New("UIGradient", {
+            Rotation = 90,
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.08, 0),
+                NumberSequenceKeypoint.new(0.92, 0),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+        }) }
+    })
+
+    local InfoBox = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+        BackgroundTransparency = 0.20,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 8, 0, 52),
+        Size = UDim2.new(0, LW, 0, 112),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 8) }),
+            New("UIStroke", { Color = Color3.fromRGB(100, 50, 190), Transparency = 0.58, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+        }
+    })
+    New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 9, 0, 5),
+        Size = UDim2.new(1, -14, 0, 13),
+        Font = Enum.Font.GothamBold,
+        Text = "Information",
+        TextColor3 = Color3.fromRGB(130, 85, 210),
+        TextSize = 9,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 203,
+        Parent = InfoBox
+    })
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(110, 60, 200),
+        BackgroundTransparency = 0.72,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 7, 0, 20),
+        Size = UDim2.new(1, -14, 0, 1),
+        ZIndex = 203,
+        Parent = InfoBox,
+        Children = { New("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.1, 0),
+                NumberSequenceKeypoint.new(0.9, 0),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+        }) }
+    })
+    local rowY = 26
+    for _, info in ipairs(supportInfo) do
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 9, 0, rowY),
+            Size = UDim2.new(0, 55, 0, 12),
+            Font = Enum.Font.GothamBold,
+            Text = (info.label or "") .. ":",
+            TextColor3 = Color3.fromRGB(115, 85, 165),
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 203,
+            Parent = InfoBox
+        })
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 64, 0, rowY),
+            Size = UDim2.new(1, -70, 0, 12),
+            Font = Enum.Font.Gotham,
+            Text = tostring(info.value or ""),
+            TextColor3 = Color3.fromRGB(180, 155, 220),
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 203,
+            Parent = InfoBox
+        })
+        rowY = rowY + 16
+        if rowY > 96 then break end
+    end
+
+    local LogBox = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+        BackgroundTransparency = 0.20,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 8, 0, 170),
+        Size = UDim2.new(0, LW, 0, 128),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 8) }),
+            New("UIStroke", { Color = Color3.fromRGB(100, 50, 190), Transparency = 0.58, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+        }
+    })
+    New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 9, 0, 5),
+        Size = UDim2.new(1, -14, 0, 13),
+        Font = Enum.Font.GothamBold,
+        Text = "Update Log",
+        TextColor3 = Color3.fromRGB(130, 85, 210),
+        TextSize = 9,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 203,
+        Parent = LogBox
+    })
+    New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(110, 60, 200),
+        BackgroundTransparency = 0.72,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, 7, 0, 20),
+        Size = UDim2.new(1, -14, 0, 1),
+        ZIndex = 203,
+        Parent = LogBox,
+        Children = { New("UIGradient", {
+            Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.1, 0),
+                NumberSequenceKeypoint.new(0.9, 0),
+                NumberSequenceKeypoint.new(1, 1)
+            })
+        }) }
+    })
+    local logY = 26
+    for _, entry in ipairs(UpdateLog) do
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 9, 0, logY),
+            Size = UDim2.new(1, -14, 0, 12),
+            Font = Enum.Font.GothamBold,
+            RichText = true,
+            Text = string.format('<font color="#a855f7">%s</font>  <font color="#554466">%s</font>', entry.version or "", entry.date or ""),
+            TextSize = 9,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            ZIndex = 203,
+            Parent = LogBox
+        })
+        logY = logY + 13
+        New("TextLabel", {
+            BackgroundTransparency = 1,
+            Position = UDim2.new(0, 13, 0, logY),
+            Size = UDim2.new(1, -18, 0, 11),
+            Font = Enum.Font.Gotham,
+            Text = "• " .. (entry.notes or ""),
+            TextColor3 = Color3.fromRGB(150, 135, 185),
+            TextSize = 8,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextTruncate = Enum.TextTruncate.AtEnd,
+            ZIndex = 203,
+            Parent = LogBox
+        })
+        logY = logY + 14
+        if logY > 110 then break end
+    end
+
+    local NoticeBg = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+        BackgroundTransparency = 0.22,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, RX, 0, 52),
+        Size = UDim2.new(0, RW, 0, 50),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 7) }),
+            New("UIStroke", { Color = Color3.fromRGB(80, 200, 110), Transparency = 0.52, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+            New("Frame", {
+                BackgroundColor3 = Color3.fromRGB(80, 200, 110),
+                BorderSizePixel = 0,
+                Position = UDim2.new(0, 0, 0.5, -10),
+                Size = UDim2.new(0, 3, 0, 20),
+                ZIndex = 203,
+                Children = { New("UICorner", { CornerRadius = UDim.new(1, 0) }) }
+            })
+        }
+    })
+    New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 12, 0, 0),
+        Size = UDim2.new(1, -16, 1, 0),
+        Font = Enum.Font.Gotham,
+        TextColor3 = Color3.fromRGB(140, 230, 170),
+        TextSize = 10,
+        TextWrapped = true,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextYAlignment = Enum.TextYAlignment.Center,
+        ZIndex = 203,
+        Text = "Freemium — key is optional.\nEnter a key to unlock premium features.",
+        Parent = NoticeBg
+    })
+
+    local LRMBar = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(9, 5, 18),
+        BackgroundTransparency = 0.22,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, RX, 0, 110),
+        Size = UDim2.new(0, RW, 0, 28),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 6) }),
+            New("UIStroke", { Color = Color3.fromRGB(100, 50, 190), Transparency = 0.60, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+        }
+    })
+    New("ImageLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 8, 0.5, -6),
+        Size = UDim2.new(0, 12, 0, 12),
+        Image = "rbxassetid://7733992528",
+        ImageColor3 = Color3.fromRGB(130, 80, 200),
+        ZIndex = 203,
+        Parent = LRMBar
+    })
+    local LRMStatusLabel = New("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 25, 0, 0),
+        Size = UDim2.new(1, -30, 1, 0),
+        Font = Enum.Font.GothamBold,
+        Text = "Checking Luarmor...",
+        TextColor3 = Color3.fromRGB(160, 140, 200),
+        TextSize = 10,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 203,
+        Parent = LRMBar
+    })
+
+    local InputBg = New("Frame", {
+        BackgroundColor3 = Color3.fromRGB(4, 2, 9),
+        BackgroundTransparency = 0,
+        BorderSizePixel = 0,
+        Position = UDim2.new(0, RX, 0, 146),
+        Size = UDim2.new(0, RW, 0, 34),
+        ZIndex = 202,
+        Parent = Card,
+        Children = {
+            New("UICorner", { CornerRadius = UDim.new(0, 7) }),
+            New("UIStroke", { Color = Color3.fromRGB(110, 55, 200), Transparency = 0.48, Thickness = 1, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }),
+        }
+    })
+    New("ImageLabel", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 10, 0.5, -7),
+        Size = UDim2.new(0, 14, 0, 14),
+        Image = "rbxassetid://7733992528",
+        ImageColor3 = Color3.fromRGB(120, 75, 195),
+        ZIndex = 203,
+        Parent = InputBg
+    })
+    local KeyInput = New("TextBox", {
+        BackgroundTransparency = 1,
+        Position = UDim2.new(0, 30, 0, 0),
+        Size = UDim2.new(1, -54, 1, 0),
+        Font = Enum.Font.GothamBold,
+        PlaceholderText = "Enter premium key...",
+        PlaceholderColor3 = Color3.fromRGB(85, 60, 125),
+        Text = "",
+        TextColor3 = Color3.fromRGB(200, 175, 255),
+        TextSize = 11,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        ClearTextOnFocus = false,
+        ZIndex = 203,
+        Parent = InputBg
+    })
+    local PasteBtn = New("ImageButton", {
+        BackgroundColor3 = Color3.fromRGB(75, 35, 155),
+        BackgroundTransparency = 0.62,
+      
