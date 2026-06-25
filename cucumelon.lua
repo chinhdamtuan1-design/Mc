@@ -88,7 +88,7 @@ titleLabel.Size = UDim2.new(1, -50, 1, 0)
 
 titleLabel.BackgroundTransparency = 1
 
-titleLabel.Text = "by chuatethanthien - tiktok:@con.chim.biet.bay0"
+titleLabel.Text = "cay vẫn phải hub lưu điểm hồi sinh- tiktok:cayvanphaihub2025aq7"
 
 titleLabel.TextColor3 = Color3.new(1,1,1)
 
@@ -126,7 +126,7 @@ saveBtn.Position = UDim2.new(0.1, 0, 0.15, 0)
 
 saveBtn.BackgroundColor3 = Color3.fromRGB(0, 180, 0)
 
-saveBtn.Text = "💾 Lưu điểm hồi sinh vị trí hiện tại"
+saveBtn.Text = "💾 Lưu điểm hồi sinh vị tại trí hiện tại"
 
 saveBtn.TextColor3 = Color3.new(1,1,1)
 
