@@ -1,6 +1,6 @@
 local plrs=game.Players local lp=plrs.LocalPlayer local rs=game:GetService("RunService") local uis=game:GetService("UserInputService") local follow=false local target=nil local offset=Vector3.new(0,0,0) local lerpSpeed=0.07 local flying=false local noclipping=false local bv,bav local flySpeed=50 local keys={W=false,S=false,A=false,D=false,Moving=false}
 
-local sg=Instance.new("ScreenGui") sg.Name="VIPFollowX" sg.ResetOnSpawn=false sg.Parent=(gethui and gethui())or game.CoreGui
+local sg=Instance.new("ScreenGui") sg.Name="Cay2025" sg.ResetOnSpawn=false sg.Parent=(gethui and gethui())or game.CoreGui
 
 local main=Instance.new("Frame",sg) main.Size=UDim2.new(0,220,0,290) main.Position=UDim2.new(0.5,-110,0.12,0) main.BackgroundColor3=Color3.fromRGB(15,15,25) main.BorderSizePixel=0 main.ClipsDescendants=true Instance.new("UICorner",main).CornerRadius=UDim.new(0,14) local stroke=Instance.new("UIStroke",main) stroke.Color=Color3.fromRGB(90,190,255) stroke.Thickness=2.2 stroke.Transparency=0.25
 
