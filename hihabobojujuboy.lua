@@ -21,7 +21,7 @@ Frame.Size = UDim2.new(0, 300, 0, 160)
 Frame.Position = UDim2.new(0.5, -150, 0.5, -80)
 UICorner.Parent = Frame
 
--- 🔴 Nút thoát (dấu X)
+-- 🔴 Nút thoát (dấu ⏎)
 local CloseButton = Instance.new("TextButton")
 CloseButton.Parent = Frame
 CloseButton.Text = "X"
@@ -39,7 +39,7 @@ CloseButton.MouseButton1Click:Connect(function()
 	ScreenGui:Destroy() -- ấn X sẽ tắt giao diện
 end)
 TextBox.Parent = Frame
-TextBox.PlaceholderText = "Nhập key tại đây 🍎"
+TextBox.PlaceholderText = "Nhập key vào khu vực này"
 TextBox.Text = ""
 TextBox.Size = UDim2.new(0.9, 0, 0, 35)
 TextBox.Position = UDim2.new(0.05, 0, 0.25, 0)
@@ -48,7 +48,7 @@ TextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 UICorner:Clone().Parent = TextBox
 
 CheckButton.Parent = Frame
-CheckButton.Text = "Kiểm tra key ✅"
+CheckButton.Text = "Kiểm tra key "
 CheckButton.Size = UDim2.new(0.4, 0, 0, 30)
 CheckButton.Position = UDim2.new(0.05, 0, 0.65, 0)
 CheckButton.BackgroundColor3 = Color3.fromRGB(80, 170, 80)
@@ -76,7 +76,7 @@ CheckButton.MouseButton1Click:Connect(function()
 		keyOk = true
 		ScreenGui:Destroy()
 		game.StarterGui:SetCore("SendNotification", {
-			Title = "Thành công 🎉";
+			Title = "Lấy key thành công 🎊";
 			Text = "Key đúng! Script sẽ khởi chạy.";
 			Duration = 3;
 		})
